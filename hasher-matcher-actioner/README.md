@@ -1,58 +1,118 @@
-# Hasher-Matcher-Actioner (HMA)
+# Hasher Matcher Actioner (HMA)
 
-![image](https://user-images.githubusercontent.com/1654004/111525752-2d5f0200-871b-11eb-9239-98dffecaa45e.png)
+_Note: HMA has just completed a rewrite! It is now an entirely new architecture. You can [read our motivations below](./docs/history.md). If you need the HMA 1.0 code (Terraform, AWS, node), it lives forever with a copy of its wiki at [HMA_1.0_archive](https://github.com/facebook/ThreatExchange/tree/HMA_1.0_archive/hasher-matcher-actioner)_
 
-"Hasher-Matcher-Actioner" or HMA is a prototype reference architecture for rapidly spinning up a complete solution for matching copies of photo, video, and other content on your platform. Matching a set of technologies called "hashing" to generate anonymous signatures or "hashes" of content, which allow you to continue matching copies of that content even if you no longer have access to the content. Additionally, lists of these hashes can be shared with trusted partners, and you can share or recieve these lists via a number of APIs, such as the [National Center for Missing and Exploited Children (NCMEC) Hash Sharing API](https://report.cybertip.org/hashsharing/v2/documentation/), the [StopNCII.org](https://stopncii.org/) API, Meta's [ThreatExchange API](https://developers.facebook.com/docs/threat-exchange/), and others.
+# Project Introduction
 
-See also [Meta's newsroom post about HMA](https://about.fb.com/news/2022/12/meta-launches-new-content-moderation-tool/).
+[Meta's newsroom post about HMA](https://about.fb.com/news/2022/12/meta-launches-new-content-moderation-tool/).
 
-The name "hasher, matcher, actioner" refers to the process by which new content is evaluated against banks of known content. First content is hashed into intermediate representations ("Hashes" or "Signals"), then it is matched against an index of known content, and then some action is taken as a result, such as counting the hits, or enqueuing for human review.
+"Hasher-Matcher-Actioner" or HMA, is a reference implementation for a key Trust and Safety content moderation capability: copy detection. Copy detection refers to the ability to identify identical or similar items to ones that you've previously identified. One popular technology used in copy detection is "hashing" technology, which allows previously seen content to be turned into anonymous digital fingerprints called "hashes". Different platforms could then share these hashes to help other platforms improve their ability to detect similar content. There are many Trust & Safety programs that allow platforms to work together to detect harmful and illegal content, such as the [National Center for Missing and Exploited Children (NCMEC) Hash Sharing Program](https://report.cybertip.org/hashsharing/v2/documentation/), the [Global Internet Forum to Counter Terrorism's Hash-Sharing Database](https://gifct.org/hsdb/), [StopNCII.org](https://stopncii.org/) and, Meta's [ThreatExchange](https://developers.facebook.com/docs/threat-exchange/) to name a few.
 
-This README is focused on deployment, you can see a more complete overview of the features at [the project wiki](https://github.com/facebook/ThreatExchange/wiki). 
+To participate in a program, platforms need to have capabilities related to the hashing techniques used by the program, the ability to ingestion of third party hashes, and then to match their content against those hashes. Hasher-Matcher-Actioner provides all the technical pieces you need.
 
-# General Architecture
-HMA runs on Amazon Web Services (AWS), the code itself is packeged with Docker, and Terraform is used to spin up and tear down instances. HMA is intended to be part of a content moderation solution running in your own stack, and so we expect many users will break up individual components, write their own Terraform scripts, or run natively as needed. Additionally, we've attempted to make it possible to insert hooks in every stage of the process, which is where the bridge between your own infrastracture and HMA might occur.
+The name "hasher, matcher, actioner" refers to the technical process by which new content is evaluated against collections of known content (called "Banks" in HMA):
 
-# Running HMA 
-Running HMA on a cloud provider will cost you money! Make sure you are ready for that before running any commands that create cloud resources.
+1. First content is **hashed** into intermediate representations ("Hashes" or "Signals")
+2. Then it is **matched** against an index of known content
+3. If it matches, some **action** is taken as a result, such as logging the content or enqueuing it for human review.
 
-## Dependencies
-You'll need an AWS account set up. Additionally, you'll need the following tools ready:
-1. [aws cli](https://aws.amazon.com/cli/)
-2. [jq cli](https://stedolan.github.io/jq/)
-3. [terraform cli](https://www.terraform.io/)
-4. [Docker](https://www.docker.com/)
-5. [python3](https://www.python.org/) (including `pip` and `venv`)
+We have documentation on the following aspects of the HMA project:
 
-## Spinning Up an Instance
-In a horrifying misuse of Make, there is a makefile to help you get started and create some configs with default naming. More details on customization be found in [CONTRIBUTING.md](CONTRIBUTING.md)
+- [Architecture](./docs/architecture.md)
+- [Goals & Non-Goals](./docs/goals.md)
+- [Project History](./docs/history.md)
+- [User Interface](./docs/user-interface.md)
+- [API](./docs/api.md) (work in progress)
 
-```bash
-$ cd hasher-matcher-actioner
-# Recommended: setup a virtual environment as make/terraform steps include pip install as part of initial deployment.
-$ python3 -m venv ~/.venv/hma
-$ source ~/.venv/hma/bin/activate 
-# Before doing this step, make sure to configure the aws cli with `aws configure`
-$ make dev_create_configs  # Will populate a terraform.tfvars backend.tf with default names
-# Optional: edit terraform.tfvars backend.tf to your preference for names of services
-$ make docker  # Will build the image from the local copy of the repo
-$ make dev_create_instance  # This will upload docker to AWS and then start the instance
-# At this point, you can interact with the service
-$ make dev_destroy_instance  # This will wipe your instance completely, leaving no resources on the cloud
+## Configurability
+
+There is no one-size-fits all solution to make platforms safe, and even in the narrow scope of hashing and matching technology, there are many possible solutions. HMA is designed to be highly configurable, such that new algorithms, hash exchanges, or other capabilities could be integrated later. If you want to use a custom or proprietary hashing algorithm with HMA, you simple need to follow the interfaces defined in [python-threatexchange ](../python-threatexchange) to add new capabilities. A full list of known available algorithms and compatible exchanges can be found at [the python-threatexchange/extensions README](https://github.com/facebook/ThreatExchange/tree/main/python-threatexchange/threatexchange/extensions/README.md).
+
+You can find an example on expanding the base image to include the Clip tx extension [here](https://github.com/juanmrad/HMA-CLIP-demo)
+
+## Using HMA for your platform
+
+HMA can be used as a library, or in any deployment setup that can use docker. It uses a simple REST API to make it as simple as possible to include in your existing environment. You'll need an engineer familiar with your platform's architecture to figure out the best way to deploy it in your ecosystem. At it's simplest, HMA can be run on a single machine, which is enough for evaluation purposes. At scale, HMA is designed with horizontal scalability in mind, and you can increase throughput by increasing the number of instances.
+
+If you are interested in using HMA for your platform, but find it's missing something for your usecase, [this issue](https://github.com/facebook/ThreatExchange/issues/1440) is currently the best place to make requests!
+
+### Docker
+
+#### How to use this image
+
+The HMA Docker image requires a PostgreSQL database to store information. Below is how you can set up and use the HMA image effectively in different environments:
+
+#### Pre-requisites
+
+- A running PostgreSQL database.
+- A configuration file that specifies settings for different roles for each instance running (Hasher, Matcher, Curator) or a configuration file for a single instance for all three roles.
+
+#### Using Docker Compose
+
+You can see a complete example using Docker Compose in the provided [docker-compose.yaml](./docker-compose.yaml) file. This example includes both the application and database services, illustrating how they can be orchestrated together.
+
+#### Configuration File
+
+HMA requires a configuration file passed as an environment variable, `OMM_CONFIG`, which specifies various operational parameters. An [example configuration file](./reference_omm_configs/development_omm_config.py) can be found in the repository for you to customize according to your needs.
+
+#### Database Connection
+
+HMA requires configuration for the database connection to postgresql, if you're not using the `docker-compose` approach described above, you will need to set the database URI for HMA to connect to. For the docker commands below, you may need to specify the network on which the postgresql database is available, in which case the commands may look something like the following:
+
+```sh
+docker run --rm --net development_default -p 5100:5100 -e OMM_CONFIG="/reference_configs/development_omm_config.py" -e OMM_DATABASE_URI="postgresql://postgres:@postgresql/hma" ghcr.io/facebook/threatexchange/hma /app/scripts/db-migrate.sh
 ```
 
-## Handling User Authentification in the Instance
-HMA uses https://aws.amazon.com/cognito/ for user accounts. You may find that you instead want to authenticate with your own internal authorization in the long term, but in the short term, you can quickly create new user accounts to use from the [user page](https://console.aws.amazon.com/cognito/users/).
+#### Running the Application in Development
 
-## Visiting the UI
-To visit your deployed UI, you'll need to get the static URL for the s3 bucket. To do that:
-1. Visit the s3 management console at https://s3.console.aws.amazon.com/s3/
-2. Search for "<your prefix>-webapp"
-3. Click on the object, and then find the "properties" tab
-4. Scroll to the bottom and find "Static Web Hosting" and grab the URL
-5. Visit the URL from your browser. You should be prompted for the account you created from the Authentification step
-![image](https://user-images.githubusercontent.com/1654004/112202142-49a4e800-8bce-11eb-8ed9-8375e77fe8e1.png)
-6. After entering your information, you should see the landing page of the UI
+To run HMA in a development environment using Docker, we first need to run the database migrations:
 
-# Contributing to HMA
-For current contributing guidance, please see [CONTRIBUTING.md](CONTRIBUTING.md).
+```bash
+$ docker run --rm -e OMM_CONFIG='/reference_configs/development_omm_config.py' ghcr.io/facebook/threatexchange/hma /app/scripts/db-migrate.sh
+```
+
+
+Then we can start the server with:
+
+```bash
+$ docker run --rm -e OMM_CONFIG='/reference_configs/development_omm_config.py' -p 5100:5100 ghcr.io/facebook/threatexchange/hma
+```
+
+This command sets the necessary environment variable and exposes the app on port 5100 of your host machine, making the API accessible locally.
+
+#### Running the Application in Production
+
+For production environments, you'll usually end up with specific configuration for your environment, for instance, only running certain roles (curator, hasher, matcher) or including specific signal types or exchanges. You should ensure that only a single instance of the curator role is active at any time to manage the indexing and download of hash bank data effectively.
+
+The `ghcr.io/facebook/threatexchange/hma` uses Gunicorn by default, if we had our own configuration file in a `config` directory named `config/production.py`, in docker we can use that as follows:
+
+```bash
+$ docker run --rm -v 'config:/config:ro' -e OMM_CONFIG='/config/production.py' -p 5100:5100 ghcr.io/facebook/threatexchange/hma"
+```
+
+#### Notes:
+
+- Adjust the port configurations and environment variables according to your specific deployment requirements.
+- It is crucial to handle the database credentials and other sensitive data securely, preferably using secrets management tools or services.
+
+## Demo instance
+
+HMA can be easily run locally for demo purposes. While Docker is running on your machine. access the directory `hasher-matcher-actioner` and run the command:
+
+```bash
+$ docker compose up
+```
+
+This will spin up both a postgresql db as well as an instance of the app running all the configurations ready for testing.
+
+### Demo UI and Walkthrough
+Please see [hma-ui.md](hma-ui.md) for a walkthrough of the UI!
+
+# Contributors
+
+- [David Callies](https://github.com/Dcallies)
+- [Sam Freeman](https://github.com/Sam-Freeman)
+- [Nikolay Gospodinov](https://github.com/NikolayOG)
+- [Doug Neal](https://github.com/dougneal)
+- [Juan Mrad](https://github.com/juanmrad)
+- And many more!

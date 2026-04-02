@@ -31,8 +31,10 @@ LIBHDRS=\
  downscaling/downscaling.h \
  io/pdqio.h \
  index/mih.h \
+ index/flat.h \
  hashing/torben.h \
- ./CImg.h
+ ./CImg.h \
+ common/pdqutils.h
 
 LIBSRCS=\
  common/pdqhashtypes.cpp \
@@ -41,7 +43,8 @@ LIBSRCS=\
  hashing/pdqhashing.cpp \
  downscaling/downscaling.cpp \
  io/pdqio.cpp \
- hashing/torben.cpp
+ hashing/torben.cpp \
+ common/pdqutils.cpp
 
 MAINS=\
  pdq-photo-hasher \
@@ -54,12 +57,15 @@ MAINS=\
  pdq-downsample-demo \
  test-bits \
  hamming-tabulate \
- test-hamming
+ test-hamming \
+ test-flat \
+ benchmark-query \
+ benchmark-photo-hasher
 
 WASMMAINS=pdq-photo-hasher
 
 TESTS=\
- run-test-bits run-test-hamming run-reg-test
+ run-test-bits run-test-hamming run-reg-test run-test-flat
 
 # ================================================================
 top: $(MAINS) $(TESTS)
@@ -74,6 +80,8 @@ run-test-hamming: test-hamming
 	./test-hamming
 run-reg-test:
 	./reg_test/run
+run-test-flat: test-flat
+	./test-flat
 itso:
 	cp output-regtest/out reg_test/expected
 
@@ -113,6 +121,8 @@ test-mih: bin/test-mih.cpp $(LIBSRCS) $(LIBHDRS)
 	$(CCOPT) bin/test-mih.cpp $(LIBSRCS) -o test-mih $(LFLAGS)
 test-mihg: bin/test-mih.cpp $(LIBSRCS) $(LIBHDRS)
 	$(CCDBG) bin/test-mih.cpp $(LIBSRCS) -o test-mihg $(LFLAGS)
+test-flat: bin/test-flat.cpp $(LIBSRCS) $(LIBHDRS)
+	$(CCOPT) bin/test-flat.cpp $(LIBSRCS) -o test-flat $(LFLAGS)
 clusterize256: bin/clusterize256.cpp $(LIBSRCS) $(LIBHDRS)
 	$(CCOPT) bin/clusterize256.cpp $(LIBSRCS) -o clusterize256 $(LFLAGS)
 clusterize256-prof: bin/clusterize256.cpp $(LIBSRCS) $(LIBHDRS)
@@ -125,6 +135,11 @@ clusterize256x-prof: bin/clusterize256x.cpp $(LIBSRCS) $(LIBHDRS)
 	$(CCDBG) -pg bin/clusterize256x.cpp $(LIBSRCS) -o clusterize256x-prof $(LFLAGS) -lpthread
 mih-query: bin/mih-query.cpp $(LIBSRCS) $(LIBHDRS)
 	$(CCOPT) bin/mih-query.cpp $(LIBSRCS) -o mih-query $(LFLAGS)
+
+benchmark-query: bin/benchmark-query.cpp $(LIBSRCS) $(LIBHDRS)
+	$(CCOPT) bin/benchmark-query.cpp $(LIBSRCS) -o benchmark-query $(LFLAGS)
+benchmark-photo-hasher: bin/benchmark-photo-hasher.cpp $(LIBSRCS) $(LIBHDRS)
+	$(CCOPT) bin/benchmark-photo-hasher.cpp $(LIBSRCS) -o benchmark-photo-hasher $(LFLAGS)
 
 # Profile version. Usage:
 # * make pdq-photo-hasher-prof

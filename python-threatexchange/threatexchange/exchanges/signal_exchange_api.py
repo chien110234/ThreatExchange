@@ -6,6 +6,8 @@ The SignalExchangeAPI talks to external APIs to read/write signals
 @see SignalExchangeAPI
 """
 
+import logging
+
 from abc import ABC, abstractmethod
 import typing as t
 
@@ -115,7 +117,7 @@ class SignalExchangeAPI(
         * Prompt the user via stdin
         * Return an instance that will throw when any methods are called
 
-        Usages of this library will only attempt to instanciate an API
+        Usages of this library will only attempt to instantiate an API
         when they have an API call to make - all methods for manipulating
         local state are classmethods.
         """
@@ -307,8 +309,8 @@ class SignalExchangeAPIWithSimpleUpdates(
         state.TFetchCheckpoint,
         state.TFetchedSignalMetadata,
         t.Tuple[str, str],
-        t.Any,
-    ]
+        state.TFetchedSignalMetadata,
+    ],
 ):
     """
     An API that conveniently maps directly into the form needed by index.
@@ -331,6 +333,15 @@ class SignalExchangeAPIWithSimpleUpdates(
         for (type_str, signal_str), metadata in fetched.items():
             s_type = type_by_name.get(type_str)
             if s_type is None or metadata is None:
+                continue
+            try:
+                s_type.validate_signal_str(signal_str)
+            except ValueError:
+                logging.warning(
+                    "Invalid fingerprint (%s): %s",
+                    s_type.get_name(),
+                    signal_str if len(signal_str) < 100 else signal_str[:100] + "...",
+                )
                 continue
             inner = ret.get(s_type)
             if inner is None:
